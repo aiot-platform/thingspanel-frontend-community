@@ -66,6 +66,7 @@ export const views: Record<LastLevelRouteKey, RouteComponent | (() => Promise<Ro
   management_notification: () => import("@/views/management/notification/index.vue"),
   management_role: () => import("@/views/management/role/index.vue"),
   management_route: () => import("@/views/management/route/index.vue"),
+  "management_device-log": () => import("@/views/management/device-log/index.vue"),
   management_setting: () => import("@/views/management/setting/index.vue"),
   management_user: () => import("@/views/management/user/index.vue"),
   "multi-menu_first_child": () => import("@/views/multi-menu/first_child/index.vue"),

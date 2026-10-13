@@ -1511,6 +1511,29 @@ declare namespace App {
           alarm: string
           noAlarm: string
           lastUpdate: string
+          deviceLog: string
+          logDirection: string
+          logUp: string
+          logDown: string
+          logMsgType: string
+          logPayload: string
+          logKeyword: string
+          logResultOk: string
+          logResultFailed: string
+          logRetentionHint: string
+          logSelectTenant: string
+          logSelectDevice: string
+          logSelectRequired: string
+          logTypeTelemetry: string
+          logTypeAttribute: string
+          logTypeEvent: string
+          logTypeStatus: string
+          logTypeTelemetryControl: string
+          logTypeAttributeSet: string
+          logTypeAttributeGet: string
+          logTypeCommand: string
+          logTypeCommandResponse: string
+          logTypeAttributeSetResponse: string
         }
       }
       generate: {

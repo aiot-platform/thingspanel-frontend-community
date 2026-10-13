@@ -80,6 +80,7 @@ declare module "@elegant-router/types" {
     "management": "/management";
     "management_api": "/management/api";
     "management_auth": "/management/auth";
+    "management_device-log": "/management/device-log";
     "management_notification": "/management/notification";
     "management_role": "/management/role";
     "management_route": "/management/route";
@@ -250,6 +251,7 @@ declare module "@elegant-router/types" {
     | "manage_user"
     | "management_api"
     | "management_auth"
+    | "management_device-log"
     | "management_notification"
     | "management_role"
     | "management_route"

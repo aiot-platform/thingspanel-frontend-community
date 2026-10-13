@@ -546,6 +546,37 @@ export const deviceStatusHistory = async (params: {
   return await request.get<any>(`/device/status/history`, { params })
 }
 
+/** 检索设备统一日志（device_log：上下行报文与上下线，保留 3 天） */
+export const deviceLogList = async (params: {
+  device_id: string
+  page: number
+  page_size: number
+  msg_type?: string
+  direction?: 'up' | 'down'
+  start_time?: number
+  end_time?: number
+  keyword?: string
+  /** 仅系统管理员需要（必填） */
+  tenant_id?: string
+}) => {
+  return await request.get<any>(`/device/log`, { params })
+}
+
+/** 系统管理-设备日志查询：租户下拉（仅系统管理员） */
+export const deviceLogTenants = async () => {
+  return await request.get<Array<{ tenant_id: string; name?: string | null; email?: string | null }>>(
+    `/device/log/tenants`
+  )
+}
+
+/** 系统管理-设备日志查询：指定租户下的设备下拉（仅系统管理员，最多返回 50 条） */
+export const deviceLogDevices = async (params: { tenant_id: string; keyword?: string }) => {
+  return await request.get<Array<{ id: string; name?: string | null; device_number: string }>>(
+    `/device/log/devices`,
+    { params }
+  )
+}
+
 /** 获取设备诊断信息 */
 export const deviceDiagnostics = async (deviceId: string) => {
   return await request.get<any>(`/devices/${deviceId}/diagnostics`)

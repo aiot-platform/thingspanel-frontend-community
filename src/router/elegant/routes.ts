@@ -604,6 +604,16 @@ export const generatedRoutes: GeneratedRoute[] = [
         }
       },
       {
+        name: 'management_device-log',
+        path: '/management/device-log',
+        component: 'view.management_device-log',
+        meta: {
+          title: 'management_device-log',
+          i18nKey: 'route.management_device-log',
+          roles: ['SYS_ADMIN']
+        }
+      },
+      {
         name: 'management_notification',
         path: '/management/notification',
         component: 'view.management_notification',

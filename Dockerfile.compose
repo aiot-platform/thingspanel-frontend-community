@@ -1,0 +1,23 @@
+# 多阶段构建：源码 -> dist（供 ../docker-compose.yaml 使用）
+# 页面由 docker-compose-midware.yaml 中的 nginx 提供服务，
+# 本镜像运行时只负责把 dist 拷贝到共享目录 /opt/docker-data/nginx/html
+
+# ===== Stage 1: Build =====
+FROM node:20-alpine AS builder
+WORKDIR /app
+
+# package.json 中声明 packageManager: pnpm@10.8.0，用 corepack 启用对应版本
+RUN corepack enable
+# 容器内没有 .git，跳过 simple-git-hooks 的安装
+ENV SKIP_INSTALL_SIMPLE_GIT_HOOKS=1
+ENV NODE_OPTIONS=--max-old-space-size=4096
+
+COPY . .
+RUN pnpm install
+RUN pnpm build
+
+# ===== Stage 2: 发布 dist =====
+FROM alpine:3.20
+COPY --from=builder /app/dist /dist
+# /html 挂载为 nginx 的站点目录；先清空旧版本再拷贝
+CMD ["sh", "-c", "mkdir -p /html && find /html -mindepth 1 -delete && cp -r /dist/. /html/ && echo 'frontend dist published'"]

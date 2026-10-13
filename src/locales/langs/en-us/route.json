@@ -75,6 +75,7 @@
   "route.management_auth": "Menu Management",
   "route.management_role": "Role Management",
   "route.management_user": "Tenant Management",
+  "route.management_device-log": "Device Log Query",
   "route.management_ordinary-user": "User Management",
   "route.management_route": "Route Management",
   "route.management_setting": "System Setting",

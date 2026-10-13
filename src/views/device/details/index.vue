@@ -49,6 +49,7 @@ const GiveAnAlarm = defineAsyncComponent(() => import('@/views/device/details/mo
 const Settings = defineAsyncComponent(() => import('@/views/device/details/modules/settings.vue'))
 const DeviceStatusHistory = defineAsyncComponent(() => import('@/views/device/details/modules/device-status.vue'))
 const DeviceDiagnosis = defineAsyncComponent(() => import('@/views/device/details/modules/device-diagnosis.vue'))
+const DeviceLog = defineAsyncComponent(() => import('@/views/device/details/modules/device-log.vue'))
 
 type TabComponent = {
   key: string
@@ -122,6 +123,12 @@ const baseComponents: TabComponent[] = [
     key: 'give-an-alarm',
     name: () => $t('custom.device_details.giveAnAlarm'),
     component: markRaw(GiveAnAlarm),
+    refreshKey: 0
+  },
+  {
+    key: 'device-log',
+    name: () => $t('custom.device_details.deviceLog'),
+    component: markRaw(DeviceLog),
     refreshKey: 0
   },
   {
