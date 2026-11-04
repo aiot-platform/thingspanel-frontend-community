@@ -25,26 +25,11 @@ export interface ApiLatestTelemetryResponse {
 }
 
 // Reintroduce the interface for the expected API response structure
-interface ApiResponse<T> {
-  code: number
-  message: string
-  data: T
-}
 
 // --- 接口定义结束 ---
 
 // --- 定义 /board/tenant 返回的 data 类型 ---
-interface TenantMonthData {
-  mon: number
-  num: number
-}
 
-interface TenantBoardData {
-  user_total: number
-  user_added_yesterday: number
-  user_added_month: number
-  user_list_month: TenantMonthData[]
-}
 // --- 类型定义结束 ---
 
 /** 获取设备总数和激活数 */
@@ -133,26 +118,34 @@ export const addTelemetry = async (params: any): Promise<any> => {
 }
 
 /** 删除遥测数据 */
-export const delTelemetry = async (id: string) => {
-  const data = await request.delete<Api.BaseApi.Data>(`/device/model/telemetry/${id}`)
+export const delTelemetry = async (id: string, templateId: string) => {
+  const data = await request.delete<Api.BaseApi.Data>(`/device/model/telemetry/${id}`, {
+    params: { device_template_id: templateId }
+  })
   return data
 }
 
 /** 删除属性数据 */
-export const delAttributes = async (id: string) => {
-  const data = await request.delete<Api.BaseApi.Data>(`/device/model/attributes/${id}`)
+export const delAttributes = async (id: string, templateId: string) => {
+  const data = await request.delete<Api.BaseApi.Data>(`/device/model/attributes/${id}`, {
+    params: { device_template_id: templateId }
+  })
   return data
 }
 
 /** 删除事件数据 */
-export const delEvents = async (id: string) => {
-  const data = await request.delete<Api.BaseApi.Data>(`/device/model/events/${id}`)
+export const delEvents = async (id: string, templateId: string) => {
+  const data = await request.delete<Api.BaseApi.Data>(`/device/model/events/${id}`, {
+    params: { device_template_id: templateId }
+  })
   return data
 }
 
 /** 删除命令数据 */
-export const delCommands = async (id: string) => {
-  const data = await request.delete<Api.BaseApi.Data>(`/device/model/commands/${id}`)
+export const delCommands = async (id: string, templateId: string) => {
+  const data = await request.delete<Api.BaseApi.Data>(`/device/model/commands/${id}`, {
+    params: { device_template_id: templateId }
+  })
   return data
 }
 
@@ -276,12 +269,9 @@ export const getSysVersion = async (params?: any): Promise<any> => {
 
 /** 获取系统指标历史数据 */
 export const getSystemMetricsHistory = async (params?: any): Promise<any> => {
-  if (process.env.NODE_ENV === 'development') {
-  }
   try {
     const data = await request.get<any>('/system/metrics/history', { params })
-    if (process.env.NODE_ENV === 'development') {
-    } // Log raw response
+    // Log raw response
     return data
   } catch (error) {
     console.error('Error fetching system metrics history:', error)

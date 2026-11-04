@@ -197,8 +197,9 @@ const deviceGroupOptions = ref([] as any)
 const getGroup = async () => {
   deviceGroupOptions.value = []
   const res = await deviceGroupTree({})
+  // 新装环境没有分组时接口返回 data:null，不兜住会整页抛异常。
   // eslint-disable-next-line array-callback-return
-  res.data.map((item: any) => {
+  ;(res.data || []).map((item: any) => {
     deviceGroupOptions.value.push(item.group)
   })
 }
@@ -433,7 +434,7 @@ const statusData = computed(() => ({
 const message = useMessage()
 
 // 动作值标识
-const actionValueChange = (ifItem: any) => {
+;(ifItem: any) => {
   if (ifItem.trigger_param_type === 'event') {
     try {
       JSON.parse(ifItem.trigger_value)
@@ -597,11 +598,11 @@ const determineOptions = computed(() => [
 const eventExistsOptions = computed(() => [
   {
     label: '存在',
-    value: true
+    value: 'true'
   },
   {
     label: '不存在',
-    value: false
+    value: 'false'
   }
 ])
 
@@ -612,6 +613,12 @@ const createEventParamCondition = () => ({
   minValue: null,
   maxValue: null
 })
+
+const triggerEnumOptions = (ifItem: any) => {
+  const group = ifItem.triggerParamOptions?.find((item: any) => item.data_source_type === ifItem.trigger_param_type)
+  const field = group?.options.find((item: any) => item.key === ifItem.trigger_param)
+  return (field?.enum || []).map((item: any) => ({ label: item.description, value: String(item.value) }))
+}
 
 const parseEventParamOptions = (params: any) => {
   if (!params) {
@@ -1148,7 +1155,12 @@ watch(locale, () => {
                         :rule="premiseFormRules.trigger_value"
                         class="max-w-40 w-full"
                       >
-                        <NInput v-model:value="ifItem.trigger_value" :placeholder="$t('generate.value')" />
+                        <NSelect
+                          v-if="triggerEnumOptions(ifItem).length"
+                          v-model:value="ifItem.trigger_value"
+                          :options="triggerEnumOptions(ifItem)"
+                        />
+                        <NInput v-else v-model:value="ifItem.trigger_value" :placeholder="$t('generate.value')" />
                       </NFormItem>
                     </template>
                   </template>
@@ -1193,7 +1205,11 @@ watch(locale, () => {
                         </NFormItem>
                         <template v-if="condition.operator === 'exists'">
                           <NFormItem :show-label="false" class="max-w-30 w-full">
-                            <NSelect v-model:value="condition.value" :options="eventExistsOptions" />
+                            <NSelect
+                              :value="String(condition.value)"
+                              :options="eventExistsOptions"
+                              @update:value="condition.value = $event === 'true'"
+                            />
                           </NFormItem>
                         </template>
                         <template v-else-if="condition.operator === 'between'">

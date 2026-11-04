@@ -1,4 +1,5 @@
 import { canonicalizeThingsVisConfig, THINGSVIS_GRID_DEFAULTS } from './chart-config-normalizer'
+import type { CanonicalChartConfig } from './chart-config-normalizer'
 
 export const APP_CANVAS_DEFAULTS = {
   mode: 'grid',
@@ -66,13 +67,17 @@ function reflowNodesToAppGrid(nodes: any[], sourceCanvas: Record<string, any>, r
     const sourceWidthInCols = positiveNumber(sourceGrid.w)
     const sourceHeightInRows = positiveNumber(sourceGrid.h)
     const hasSourceGrid = sourceWidthInCols !== undefined
-    const sourcePixelWidth = positiveNumber(nodeSize.width, node?.width) ?? 240
+    const sourcePixelWidth = hasSourceGrid
+      ? (sourceWidthInCols / sourceCols) * sourceWidth
+      : (positiveNumber(nodeSize.width, node?.width) ?? 240)
     const sourcePixelHeight = positiveNumber(nodeSize.height, node?.height) ?? 200
-    const width = clamp(
-      hasSourceGrid ? (sourceWidthInCols * appCols) / sourceCols : (sourcePixelWidth * appCols) / sourceWidth,
-      1,
-      appCols
-    )
+    const appGap = APP_CANVAS_DEFAULTS.gridGap
+    const appPadding = APP_CANVAS_DEFAULTS.padding
+    const appUsableWidth = APP_CANVAS_DEFAULTS.width - appPadding * 2
+    const appCellWidth = (appUsableWidth - appGap * (appCols - 1)) / appCols
+    const readablePixelWidth = Math.min(appUsableWidth, sourcePixelWidth)
+    const width = clamp(Math.ceil((readablePixelWidth + appGap) / (appCellWidth + appGap)), 1, appCols)
+    const appGridSpanWidth = width * appCellWidth + (width - 1) * appGap
     const height = Math.max(1, Math.round(sourceHeightInRows ?? sourcePixelHeight / 50))
 
     if (cursorX + width > appCols) {
@@ -97,7 +102,7 @@ function reflowNodesToAppGrid(nodes: any[], sourceCanvas: Record<string, any>, r
         y: cursorY * APP_CANVAS_DEFAULTS.gridRowHeight
       },
       size: {
-        width: hasSourceGrid ? width * cellWidth : Math.min(APP_CANVAS_DEFAULTS.width, sourcePixelWidth),
+        width: appGridSpanWidth,
         height: hasSourceGrid ? height * APP_CANVAS_DEFAULTS.gridRowHeight : sourcePixelHeight
       }
     }
@@ -176,7 +181,13 @@ function gridRowEnd(nodes: any[]) {
   }, 0)
 }
 
-function updateAppCanvasHeight(config: Record<string, any>, nodes: any[]) {
+function updateAppCanvasHeight(
+  config: Record<string, any>,
+  nodes: any[]
+): Record<string, any> & {
+  nodes: any[]
+  canvas: Record<string, any>
+} {
   const canvas = recordValue(config.canvas)
   const rowEnd = gridRowEnd(nodes)
   const rowHeight = Number(canvas.gridRowHeight) || APP_CANVAS_DEFAULTS.gridRowHeight
@@ -199,7 +210,7 @@ function updateAppCanvasHeight(config: Record<string, any>, nodes: any[]) {
  * Web and App charts remain independent; this only migrates a legacy App
  * payload that was copied from (or saved with) a landscape Web canvas.
  */
-export function normalizeAppChartConfig(raw: unknown) {
+export function normalizeAppChartConfig(raw: unknown): CanonicalChartConfig {
   const config = canonicalizeThingsVisConfig(raw, { defaultCanvas: APP_CANVAS_DEFAULTS })
   const canvas = recordValue(config.canvas)
   const normalizedCanvas = {
@@ -411,7 +422,6 @@ export function syncAppChartConfigFromWeb(currentAppConfig: unknown, webConfig: 
       },
       canvas: {
         ...(parsed.canvas || {}),
-        mode: 'grid',
         ...APP_CANVAS_DEFAULTS
       }
     }

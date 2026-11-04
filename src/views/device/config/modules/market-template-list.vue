@@ -1,19 +1,21 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, watch } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
-import { NSpin, NEmpty, NPagination } from 'naive-ui'
+import { NSpin, NEmpty, NPagination, useMessage } from 'naive-ui'
 import { GridOutline, ListOutline } from '@vicons/ionicons5'
 import { $t } from '@/locales'
 import AdvancedListLayout from '@/components/list-page/index.vue'
 import CardGrid from '@/components/card-grid/index.vue'
 import MarketFilterBar from '@/views/device/market/MarketFilterBar.vue'
-import { getMarketTemplates, installFromMarket } from '@/service/api/market'
+import { getMarketTemplates, getMarketTemplateDetail, installFromMarket } from '@/service/api/market'
+import { marketTemplateCompatibility } from '../market-template-compatibility'
 import { useMarketAuth } from '../composables/use-market-auth'
 import MarketTemplateCard from './market-template-card.vue'
 import MarketTemplateDrawer from './market-template-drawer.vue'
 import MarketLoginModal from './market-login-modal.vue'
 
 const emit = defineEmits(['installed'])
+const message = useMessage()
 
 const { isLoggedIn, getToken, clearToken } = useMarketAuth()
 
@@ -54,6 +56,7 @@ const selectedTemplateId = ref('')
 // Login modal
 const marketLoginRef = ref<InstanceType<typeof MarketLoginModal>>()
 const pendingInstallId = ref('')
+const pendingInstallVersion = ref('')
 
 const fetchMarketTemplates = async () => {
   loading.value = true
@@ -116,22 +119,37 @@ const handleViewDetail = (id: string) => {
   drawerVisible.value = true
 }
 
-const startInstall = async (id: string) => {
+const resolveInstallVersion = (id: string) => {
+  const template = templateList.value.find(item => item.id === id)
+  return String(template?.latest_version || template?.version || '')
+}
+
+const startInstall = async (id: string, selectedVersion = resolveInstallVersion(id)) => {
+  if (!selectedVersion) {
+    window.$message?.error($t('market.browse.versionUnavailable'))
+    return
+  }
   if (!isLoggedIn()) {
     pendingInstallId.value = id
+    pendingInstallVersion.value = selectedVersion
     marketLoginRef.value?.open()
     return
   }
-  await doInstall(id)
+  await doInstall(id, selectedVersion)
 }
 
-const handleInstall = (id: string) => {
+const handleInstall = (id: string, version?: string) => {
   if (installingId.value) return
 
+  const selectedVersion = version || resolveInstallVersion(id)
+  if (!selectedVersion) {
+    window.$message?.error($t('market.browse.versionUnavailable'))
+    return
+  }
   const templateName = templateList.value.find(item => item.id === id)?.name || '该模板'
   const dialog = window.$dialog
   if (!dialog) {
-    startInstall(id)
+    startInstall(id, selectedVersion)
     return
   }
 
@@ -140,18 +158,26 @@ const handleInstall = (id: string) => {
     content: $t('market.browse.downloadConfirmMessage', { name: templateName }),
     positiveText: $t('market.browse.confirmDownload'),
     negativeText: $t('common.cancel'),
-    onPositiveClick: () => startInstall(id)
+    onPositiveClick: () => startInstall(id, selectedVersion)
   })
 }
 
-const doInstall = async (id: string) => {
+const doInstall = async (id: string, version: string) => {
   const token = getToken()
   if (!token) return
 
   installingId.value = id
   try {
+    const detailRes: any = await getMarketTemplateDetail(id)
+    const compatibility = detailRes.error ? 'unavailable' : marketTemplateCompatibility(detailRes.data, version)
+    if (compatibility !== 'native') {
+      throw new Error(
+        $t(compatibility === 'legacy' ? 'market.compatibility.legacy' : 'market.compatibility.unavailable')
+      )
+    }
     const res: any = await installFromMarket({
       market_template_id: id,
+      version,
       market_token: token
     })
     if (!res.error) {
@@ -171,24 +197,25 @@ const doInstall = async (id: string) => {
           positiveText: $t('common.confirm')
         })
       }
-      window.$message?.success($t('market.installSuccess'))
+      message.success($t('market.installSuccess'))
       emit('installed')
     } else {
       const msg = res.error?.msg || ''
       if (msg.includes('已存在') || msg.includes('duplicate')) {
-        window.$message?.warning($t('market.alreadyInstalled'))
+        message.warning($t('market.alreadyInstalled'))
       } else {
-        window.$message?.error($t('market.installFailed') + ': ' + msg)
+        message.error($t('market.installFailed') + ': ' + msg)
       }
     }
   } catch (e: any) {
     if (e?.response?.status === 401) {
       clearToken()
-      window.$message?.error($t('market.tokenExpired'))
+      message.error($t('market.tokenExpired'))
       pendingInstallId.value = id
+      pendingInstallVersion.value = version
       marketLoginRef.value?.open()
     } else {
-      window.$message?.error($t('market.installFailed') + ': ' + (e?.message || ''))
+      message.error($t('market.installFailed') + ': ' + (e?.message || ''))
     }
   } finally {
     installingId.value = ''
@@ -197,8 +224,9 @@ const doInstall = async (id: string) => {
 
 const onMarketLoginSuccess = () => {
   if (pendingInstallId.value) {
-    doInstall(pendingInstallId.value)
+    doInstall(pendingInstallId.value, pendingInstallVersion.value)
     pendingInstallId.value = ''
+    pendingInstallVersion.value = ''
   }
 }
 

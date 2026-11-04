@@ -5,7 +5,8 @@
  */
 
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
-import { NButton, NModal, NCard, NEmpty, NSelect, NSpace, NSpin, NIcon } from 'naive-ui'
+import type { PropType } from 'vue'
+import { NButton, NModal, NCard, NEmpty, NSpace, NSpin, NIcon } from 'naive-ui'
 import { ExpandOutline, ContractOutline, CloseOutline } from '@vicons/ionicons5'
 import { $t } from '@/locales'
 import { getTemplat, putTemplat, telemetryApi, attributesApi, eventsApi, commandsApi } from '@/service/api'
@@ -14,6 +15,8 @@ import { extractPlatformFields } from '@/utils/thingsvis/platform-fields'
 import { syncAppChartConfigFromWeb } from '@/utils/thingsvis/chart-config-initialization'
 import { canonicalizeThingsVisConfig } from '@/utils/thingsvis/chart-config-normalizer'
 import type { PlatformField } from '@/utils/thingsvis/types'
+import type { NativeChartResourcesPort } from '@/views/device/template/native-chart-resource-port'
+import type { NativeChartUpdateOptions } from '@/views/device/template/native-chart-resource-port'
 
 const emit = defineEmits(['update:stepCurrent', 'update:modalVisible'])
 
@@ -29,7 +32,14 @@ const props = defineProps({
   deviceTemplateId: {
     type: String,
     required: true
-  }
+  },
+  isEditMode: {
+    type: Boolean,
+    default: false
+  },
+  nativeResourcePort: { type: Object as PropType<NativeChartResourcesPort>, default: undefined },
+  nativePlatformFields: { type: Array as PropType<PlatformField[]>, default: undefined },
+  nativeResourcesRevision: { type: Number, default: undefined }
 })
 
 // 编辑器引用
@@ -61,6 +71,8 @@ const initialConfig = ref<any>(null)
 const platformFields = ref<PlatformField[]>([])
 const hasConfig = ref(false)
 const refreshInterval = ref(5000)
+let nativeOpenedRevision: number | undefined
+let nativeOpenedConfig: unknown = null
 
 const useTemplateDeviceForHistoryCurves = (config: any) => {
   if (!Array.isArray(config?.nodes)) return config
@@ -91,14 +103,6 @@ const unwrapApiList = (payload: unknown): any[] => {
   return Array.isArray(body) ? body : []
 }
 
-const refreshOptions = [
-  { label: '手动刷新', value: 0 },
-  { label: '5秒', value: 5000 },
-  { label: '10秒', value: 10000 },
-  { label: '30秒', value: 30000 },
-  { label: '1分钟', value: 60000 }
-]
-
 // 🎨 iframe 高度设为足够大，确保内容完整渲染
 const previewHeight = computed(() => {
   return '1200px'
@@ -117,7 +121,13 @@ const back: () => void = () => {
 // 打开编辑器
 const openEditor = () => {
   isEditorFullscreen.value = false
-  showEditorModal.value = true
+  if (props.nativeResourcePort) {
+    void loadTemplateData().then(() => {
+      showEditorModal.value = true
+    })
+  } else {
+    showEditorModal.value = true
+  }
 }
 
 const toggleEditorFullscreen = async () => {
@@ -156,6 +166,37 @@ const handleSave = async (payload: any) => {
 
   saving.value = true
   try {
+    if (props.nativeResourcePort) {
+      const cleanedPayload = useTemplateDeviceForHistoryCurves(canonicalizeThingsVisConfig(payload))
+      if (Array.isArray(cleanedPayload.dataSources)) {
+        cleanedPayload.dataSources.forEach((ds: any) => {
+          if (ds.type === 'PLATFORM_FIELD' && ds.config) delete ds.config.deviceId
+        })
+      }
+      const configToSave = { ...cleanedPayload, refreshInterval: refreshInterval.value }
+      const updateOptions: NativeChartUpdateOptions | undefined =
+        nativeOpenedRevision === undefined
+          ? undefined
+          : {
+              openedRevision: nativeOpenedRevision,
+              conflictKey: 'webChartConfig',
+              openedValue: nativeOpenedConfig
+            }
+      const updated = await props.nativeResourcePort.update(current => {
+        const appConfig = syncAppChartConfigFromWeb(current.appChartConfig, JSON.stringify(configToSave))
+        return { ...current, webChartConfig: configToSave, appChartConfig: JSON.parse(appConfig) }
+      }, updateOptions)
+      nativeOpenedRevision = updated.revision
+      nativeOpenedConfig = updated.resources.webChartConfig
+      initialConfig.value = useTemplateDeviceForHistoryCurves(
+        canonicalizeThingsVisConfig(updated.resources.webChartConfig)
+      )
+      hasConfig.value = true
+      widgetKey.value++
+      showEditorModal.value = false
+      window.$message?.success($t('common.saveSuccess'))
+      return
+    }
     // 获取当前模板数据
     const res = await getTemplat(props.deviceTemplateId)
 
@@ -206,6 +247,22 @@ const handleSave = async (payload: any) => {
 const loadTemplateData = async () => {
   loading.value = true
   try {
+    if (props.nativeResourcePort) {
+      const loaded = await props.nativeResourcePort.load()
+      nativeOpenedRevision = loaded.revision
+      nativeOpenedConfig = loaded.resources.webChartConfig
+      platformFields.value = props.nativePlatformFields || []
+      if (loaded.resources.webChartConfig) {
+        const config = useTemplateDeviceForHistoryCurves(canonicalizeThingsVisConfig(loaded.resources.webChartConfig))
+        initialConfig.value = config
+        hasConfig.value = true
+        if (config.refreshInterval !== undefined) refreshInterval.value = config.refreshInterval
+      } else {
+        initialConfig.value = null
+        hasConfig.value = false
+      }
+      return
+    }
     const res = await getTemplat(props.deviceTemplateId)
 
     if (res.data) {
@@ -271,6 +328,14 @@ watch(showEditorModal, visible => {
     isEditorFullscreen.value = false
   }
 })
+
+watch(
+  () => props.nativeResourcesRevision,
+  (revision, previous) => {
+    if (props.nativeResourcePort && revision !== undefined && previous !== undefined && revision !== previous)
+      void loadTemplateData()
+  }
+)
 </script>
 
 <template>
@@ -306,7 +371,7 @@ watch(showEditorModal, visible => {
     </NCard>
 
     <!-- 操作按钮 -->
-    <div class="actions-bar">
+    <div v-if="!props.isEditMode" class="actions-bar">
       <NButton type="primary" @click="next">
         {{ $t('device_template.nextStep') }}
       </NButton>
@@ -319,7 +384,7 @@ watch(showEditorModal, visible => {
     </div>
 
     <!-- 编辑器弹窗 -->
-    <NModal v-model:show="showEditorModal" :mask-closable="false">
+    <NModal v-model:show="showEditorModal" :mask-closable="false" :close-on-esc="!saving">
       <div class="chart-editor-shell" :class="{ 'chart-editor-shell--fullscreen': isEditorFullscreen }">
         <NCard
           title="编辑 Web 图表配置"
@@ -329,7 +394,13 @@ watch(showEditorModal, visible => {
         >
           <template #header-extra>
             <NSpace align="center" size="small">
-              <NButton quaternary circle @click="toggleEditorFullscreen">
+              <NButton
+                quaternary
+                circle
+                :aria-label="isEditorFullscreen ? '退出全屏' : '全屏编辑'"
+                :title="isEditorFullscreen ? '退出全屏' : '全屏编辑'"
+                @click="toggleEditorFullscreen"
+              >
                 <template #icon>
                   <NIcon>
                     <ContractOutline v-if="isEditorFullscreen" />
@@ -337,7 +408,14 @@ watch(showEditorModal, visible => {
                   </NIcon>
                 </template>
               </NButton>
-              <NButton quaternary circle @click="showEditorModal = false">
+              <NButton
+                quaternary
+                circle
+                :disabled="saving"
+                aria-label="关闭图表编辑器"
+                title="关闭"
+                @click="showEditorModal = false"
+              >
                 <template #icon>
                   <NIcon>
                     <CloseOutline />
@@ -362,7 +440,7 @@ watch(showEditorModal, visible => {
 
           <template #footer>
             <div class="modal-footer">
-              <NButton @click="showEditorModal = false">取消</NButton>
+              <NButton :disabled="saving" @click="showEditorModal = false">取消</NButton>
               <NButton type="primary" :loading="saving" @click="editorRef?.triggerSave()">保存配置</NButton>
             </div>
           </template>
@@ -410,7 +488,13 @@ watch(showEditorModal, visible => {
 .modal-footer {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
+  gap: 8px;
+
+  :deep(.n-button) {
+    height: 36px;
+    min-width: 72px;
+    border-radius: 8px;
+  }
 }
 
 :deep(.chart-editor-shell) {

@@ -5,7 +5,7 @@
  * 用于在安装市场解决方案包时，将 bundle 中的设备绑定映射到本地设备
  */
 import { ref, computed, watch } from 'vue'
-import { NCard, NAlert, NButton, NInput, NIcon, NSpin, NEmpty, NSpace, NTag } from 'naive-ui'
+import { NCard, NAlert, NButton, NInput, NIcon, NSpin, NEmpty, NSpace, NTag, useMessage } from 'naive-ui'
 import { SearchOutline, LinkOutline, AlertCircleOutline, CheckmarkCircleOutline } from '@vicons/ionicons5'
 import { $t } from '@/locales'
 import {
@@ -54,18 +54,18 @@ const emit = defineEmits<{
   cancel: []
 }>()
 
+const message = useMessage()
+
 // ========== Composable ==========
 
 const {
   isLoading,
   bindings,
-  error,
   boundCount,
   unboundCount,
   skippedCount,
   hasRequiredUnbound,
   canProceed,
-  bindingSummary,
   loadAllCompatibleDevices,
   selectDevice,
   skipBinding,
@@ -98,7 +98,7 @@ const isInitialized = ref(false)
 // ========== Computed ==========
 
 /** 所有必填项是否已绑定 */
-const allRequiredBound = computed(() => !hasRequiredUnbound.value)
+computed(() => !hasRequiredUnbound.value)
 
 /** 绑定进度 */
 const bindingProgress = computed(() => {
@@ -218,7 +218,7 @@ function handleComplete() {
   const validation = validateBindings()
 
   if (!validation.isValid) {
-    window.$message?.error($t('market.install.requiredBindingsNotBound'))
+    message.error($t('market.install.requiredBindingsNotBound'))
     return
   }
 
@@ -264,33 +264,14 @@ function getDeviceStatusText(online: boolean): string {
 /**
  * 获取设备选择选项
  */
-function getDeviceOptions(binding: DeviceBinding) {
-  const devices = getFilteredDevices(binding)
-  return devices.map(device => ({
-    label: device.name,
-    value: device.id,
-    disabled: false
-  }))
-}
 
 /**
  * 获取绑定状态图标
  */
-function getBindingStatusIcon(binding: DeviceBinding): string {
-  if (binding.skipped) return 'skip'
-  if (binding.selectedDeviceId) return 'bound'
-  return 'unbound'
-}
 
 /**
  * 获取绑定状态颜色
  */
-function getBindingStatusColor(binding: DeviceBinding): string {
-  if (binding.skipped) return 'warning'
-  if (binding.selectedDeviceId) return 'success'
-  if (binding.required) return 'error'
-  return 'default'
-}
 
 // ========== Expose ==========
 

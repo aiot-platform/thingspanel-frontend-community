@@ -31,6 +31,10 @@ declare namespace Env {
      * Only valid in the development environment
      */
     readonly VITE_HTTP_PROXY?: CommonType.YesOrNo
+    /** Explicit origin, or "business" to use the configured business gateway origin. */
+    readonly VITE_NOTIFICATION_DEV_PROXY_TARGET?: string
+    /** Explicit development origin for the single native authentication owner. */
+    readonly VITE_AUTH_DEV_PROXY_TARGET?: string
     /** The back service env */
     readonly VITE_SERVICE_ENV?: App.Service.EnvType
     /**
@@ -67,6 +71,17 @@ declare namespace Env {
     readonly VITE_AUTO_LOGIN_USERNAME?: string
     /** Auto login password for development environment */
     readonly VITE_AUTO_LOGIN_PASSWORD?: string
+    /**
+     * Development-only automation origin, or "business" for the configured gateway.
+     * Standalone origins strip `/automation-core`; business mode preserves it.
+     */
+    readonly VITE_AUTOMATION_DEV_PROXY_TARGET?: string
+    /**
+     * Absolute base URL of the automation engine. Unset means "same origin,
+     * `/automation-core`", which is what the development proxy and the
+     * production reverse proxy both serve.
+     */
+    readonly VITE_AUTOMATION_API_BASE_URL?: string
     readonly globEager: <T = any>(globPattern: string) => Record<string, T>
   }
 }

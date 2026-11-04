@@ -1,6 +1,5 @@
 <script setup lang="tsx">
 import { computed, reactive, ref } from 'vue'
-import type { PaginationProps } from 'naive-ui'
 import { NButton, NEmpty, NPopconfirm, NSpace } from 'naive-ui'
 import { useLoading } from '@sa/hooks'
 import { $t } from '@/locales'
@@ -37,6 +36,10 @@ const props = defineProps({
   deviceTemplateId: {
     type: String,
     required: true
+  },
+  isEditMode: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -133,11 +136,24 @@ const getPagination = (index: number) => {
 let objItem = reactive<any>({})
 const edit: (row: any) => void = row => {
   addAndEditModalVisible.value = true
-  objItem = row
+  const readWriteFlagMap: Record<string, string> = {
+    R: 'R-只读',
+    'R-只读': 'R-只读',
+    [$t('device_template.table_header.readOnly')]: 'R-只读',
+    RW: 'RW-读/写',
+    'RW-读/写': 'RW-读/写',
+    [$t('device_template.table_header.readAndWrite')]: 'RW-读/写'
+  }
+  // Table rows contain display labels. Copy the row and restore the select's
+  // values so editing a field cannot accidentally change its access level.
+  objItem = {
+    ...row,
+    read_write_flag: readWriteFlagMap[row.read_write_flag] ?? ''
+  }
 }
 
 // 预设配置
-const configPreset = (row: any, type: 'telemetry' | 'attributes') => {
+;(row: any, type: 'telemetry' | 'attributes') => {
   presetProperty.value = {
     id: row.id,
     name: row.data_name,
@@ -158,13 +174,13 @@ const determine: () => void = () => {
 // 删除
 const del: (id: string) => void = async id => {
   if (tabsCurrent.value === 'telemetry') {
-    await delTelemetry(id)
+    await delTelemetry(id, props.deviceTemplateId)
   } else if (tabsCurrent.value === 'attributes') {
-    await delAttributes(id)
+    await delAttributes(id, props.deviceTemplateId)
   } else if (tabsCurrent.value === 'events') {
-    await delEvents(id)
+    await delEvents(id, props.deviceTemplateId)
   } else {
-    await delCommands(id)
+    await delCommands(id, props.deviceTemplateId)
   }
   // eslint-disable-next-line @typescript-eslint/no-use-before-define
   getTableData(tabsCurrent.value)
@@ -432,7 +448,7 @@ getTableData()
           :columns="item.col"
           :data="item.data"
           :loading="loading"
-          class="model-definition-table m-t9 flex-1-hidden"
+          class="model-definition-table m-t9"
           size="medium"
           :theme-overrides="modelTableThemeOverrides"
           :pagination="getPagination(index)"
@@ -455,7 +471,7 @@ getTableData()
       </n-tab-pane>
     </n-tabs>
   </div>
-  <div class="box1 m-t2">
+  <div v-if="!props.isEditMode" class="box1 m-t2">
     <NButton type="primary" @click="next">{{ $t('device_template.nextStep') }}</NButton>
     <NButton class="m-r3" ghost type="primary" @click="back">{{ $t('device_template.back') }}</NButton>
     <NButton class="m-r3" @click="cancellation">{{ $t('generate.cancel') }}</NButton>
