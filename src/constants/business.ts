@@ -162,6 +162,10 @@ export const notificationOptions = [
     value: 'EMAIL'
   },
   {
+    label: $t('card.smsNotice'),
+    value: 'SME'
+  },
+  {
     label: 'webhook',
     value: 'WEBHOOK'
   }
