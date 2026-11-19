@@ -148,5 +148,11 @@
   "route.device_new-device-template_template-details": "Model Details (New)",
   "route.device_new-device-template_template-details_editor": "Edit Model (New)",
   "route.device_new-device-template_template-details_viewer": "View Model (New)",
-  "route.test_category-test": "Category Test"
+  "route.test_category-test": "Category Test",
+  "route.pet": "Pet Care",
+  "route.pet_profile": "Pet Profile",
+  "route.pet_staff-note": "Staff Notes",
+  "route.pet_album": "Album & Timeline",
+  "route.industry-solution": "Industry Solution",
+  "route.industry-solution_manage": "Solution Management"
 }
