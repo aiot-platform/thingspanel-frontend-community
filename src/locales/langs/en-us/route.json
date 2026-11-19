@@ -153,6 +153,8 @@
   "route.pet_profile": "Pet Profile",
   "route.pet_staff-note": "Staff Notes",
   "route.pet_album": "Album & Timeline",
+  "route.pet_bind-code": "Bind Code",
   "route.industry-solution": "Industry Solution",
-  "route.industry-solution_manage": "Solution Management"
+  "route.industry-solution_manage": "Solution Management",
+  "route.industry-solution_tenant": "Tenant Hierarchy"
 }

@@ -142,6 +142,8 @@
   "route.pet_profile": "宠物档案",
   "route.pet_staff-note": "店员留言",
   "route.pet_album": "相册时间线",
+  "route.pet_bind-code": "绑定码管理",
   "route.industry-solution": "行业方案",
-  "route.industry-solution_manage": "方案管理"
+  "route.industry-solution_manage": "方案管理",
+  "route.industry-solution_tenant": "租户层级"
 }

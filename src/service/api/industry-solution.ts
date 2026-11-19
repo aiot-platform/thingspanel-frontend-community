@@ -47,6 +47,8 @@ export interface TenantSolutionAssignParams {
   tenant_id: string
   solution_code: string
   enabled?: number
+  /** 沿租户层级下放（经销商为下属门店开通） */
+  cascade?: boolean
 }
 
 /** 方案字典列表 */
